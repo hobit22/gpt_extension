@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page Content Reader</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 PDF Text Extractor</h1>
+      <button id="refreshBtn" class="refresh-btn">🔄 Extract</button>
+    </div>
+
+    <div class="content">
+      <div class="status" id="status">
+        Click Extract to read PDF content
+      </div>
+
+      <div class="page-info" id="pageInfo" style="display: none;">
+        <h3>📍 PDF Info</h3>
+        <div class="info-item">
+          <strong>File:</strong> <span id="pageTitle"></span>
+        </div>
+        <div class="info-item">
+          <strong>Pages:</strong> <span id="pageCount">-</span>
+        </div>
+        <div class="info-item">
+          <strong>Words:</strong> <span id="wordCount">-</span>
+        </div>
+        <div class="info-item">
+          <strong>URL:</strong> <span id="pageUrl"></span>
+        </div>
+      </div>
+
+      <div class="content-section" id="contentSection" style="display: none;">
+        <h3>📖 Extracted Text</h3>
+        <div class="content-display" id="contentDisplay">
+          <!-- PDF text content will be displayed here -->
+        </div>
+        <div class="content-actions">
+          <button id="copyBtn" class="action-btn">📋 Copy Text</button>
+          <button id="summarizeBtn" class="action-btn">✨ Summarize</button>
+        </div>
+      </div>
+
+      <div class="loading" id="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Reading page content...</p>
+      </div>
+
+      <div class="error" id="error" style="display: none;">
+        <p id="errorMessage"></p>
+        <button id="retryBtn" class="retry-btn">🔄 Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "PDF Text Extractor",
+  "version": "1.0.0",
+  "description": "Extract and summarize text from PDF files",
+
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "storage",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "file://*/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["*://*/*.pdf", "file:///*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+
+  "action": {
+    "default_title": "Extract PDF text"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["pdf.worker.min.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
