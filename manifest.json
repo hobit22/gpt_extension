@@ -8,7 +8,8 @@
     "activeTab",
     "sidePanel",
     "storage",
-    "scripting"
+    "scripting",
+    "offscreen"
   ],
 
   "host_permissions": [
@@ -43,5 +44,9 @@
       "resources": ["pdf.worker.min.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

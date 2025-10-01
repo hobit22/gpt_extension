@@ -12,6 +12,41 @@ interface PDFContent {
 // Store current PDF content
 let currentPDFContent: PDFContent | null = null;
 
+// Offscreen document management
+let creating: Promise<void> | null = null;
+let offscreenDocumentCreated = false;
+
+async function setupOffscreenDocument(path: string) {
+  // Check if already created
+  if (offscreenDocumentCreated) {
+    return;
+  }
+
+  if (creating) {
+    await creating;
+    return;
+  }
+
+  creating = (async () => {
+    try {
+      await (chrome.offscreen as any).createDocument({
+        url: path,
+        reasons: ['BLOBS'],
+        justification: 'PDF text extraction using PDF.js'
+      });
+      offscreenDocumentCreated = true;
+      console.log('Background: Offscreen document created');
+    } catch (error) {
+      // Document might already exist
+      console.log('Background: Offscreen document creation error (might already exist):', error);
+      offscreenDocumentCreated = true;
+    }
+  })();
+
+  await creating;
+  creating = null;
+}
+
 // Initialize listeners
 chrome.runtime.onInstalled.addListener(() => {
   console.log('PDF Text Extractor extension installed');
@@ -31,12 +66,28 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 // Handle messages from content script and sidepanel
 chrome.runtime.onMessage.addListener((
-  message: { action: string; data?: PDFContent },
+  message: { action: string; data?: PDFContent; url?: string; origin?: string },
   _sender: chrome.runtime.MessageSender,
   sendResponse: (response: any) => void
 ): boolean => {
 
   switch (message.action) {
+    case 'extractPDFFromBackground':
+      // Handle PDF extraction request from content script
+      if (message.url) {
+        extractPDFInBackground(message.url, sendResponse);
+        return true;
+      }
+      break;
+
+    case 'extractPDFInViewer':
+      // Handle PDF extraction request from viewer.html
+      if (message.url) {
+        extractPDFDirectly(message.url, message.origin || message.url, sendResponse);
+        return true;
+      }
+      break;
+
     case 'contentReady':
       // Content script automatically extracted PDF content
       if (message.data) {
@@ -134,3 +185,83 @@ chrome.tabs.onActivated.addListener(async (_activeInfo) => {
   // Clear old PDF content when switching tabs
   currentPDFContent = null;
 });
+
+// Helper function to extract PDF using offscreen document
+async function extractPDFInBackground(url: string, sendResponse: (response: any) => void) {
+  try {
+    console.log('Background: Setting up offscreen document...');
+
+    // Setup offscreen document
+    await setupOffscreenDocument('offscreen.html');
+
+    console.log('Background: Requesting extraction from offscreen document...');
+
+    // Send message to offscreen document
+    chrome.runtime.sendMessage(
+      {
+        action: 'extractPDFOffscreen',
+        url: url
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Background: Offscreen message error:', chrome.runtime.lastError.message);
+          sendResponse({
+            success: false,
+            error: chrome.runtime.lastError.message
+          });
+          return;
+        }
+
+        if (response && response.success) {
+          currentPDFContent = response.data;
+          console.log('Background: Extraction successful,', response.data.wordCount, 'words');
+          sendResponse({ success: true, data: response.data });
+        } else {
+          sendResponse({
+            success: false,
+            error: response?.error || 'Offscreen extraction failed'
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Background: Extraction failed:', error);
+    sendResponse({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+// Helper function to extract PDF directly (used by viewer.html)
+async function extractPDFDirectly(_url: string, _origin: string, sendResponse: (response: any) => void) {
+  try {
+    // Get active tab to send extraction request
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab?.id) {
+      sendResponse({ success: false, error: 'No active tab found' });
+      return;
+    }
+
+    // Send message to content script to extract
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'extractContent'
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({
+          success: false,
+          error: chrome.runtime.lastError.message
+        });
+        return;
+      }
+
+      sendResponse(response);
+    });
+  } catch (error) {
+    sendResponse({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
